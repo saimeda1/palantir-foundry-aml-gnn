@@ -1,0 +1,38 @@
+inputs:
+- alias: "aml_model_checkpoints"
+  properties:
+    type: "dataset"
+    dataset:
+      rid: "ri.foundry.main.dataset.72743b94-797c-4a94-89b8-e9d5ebb8952e"
+      assumedMarkings: []
+outputs:
+- alias: "aml_gnn_hi_small"
+  properties:
+    type: "model"
+    model:
+      rid: "ri.models.main.model.6f8e161b-348d-402f-a57b-3a8c59ed3981"
+runtime:
+  type: "managedContainer"
+  managedContainer:
+    identifier: "code-workspaces-jupyter-python-3_9-image"
+    command: "/opt/palantir/transforms.d/run-ipynb.sh"
+    filePath: "publish_model.ipynb"
+    envVars:
+      DISABLE_MAESTRO_MCP: "false"
+      DISABLE_OUTPUTS: "false"
+      ENABLE_AGENT_SOURCE_CREDENTIALS_IN_SIDECAR: "true"
+      ENABLE_CODE_BUDDY: "false"
+      ENABLE_CRUCIBLE_S3_PROXY: "false"
+      ENABLE_FUNCTIONS_PREVIEW: "false"
+      ENABLE_MANAGED_CONDA_ENVIRONMENTS: "true"
+      ENABLE_MANAGED_CRAN_ENVIRONMENTS: "false"
+      ENABLE_PROMPT_CACHING: "true"
+      ENABLE_SOURCES: "true"
+      ENABLE_USER_SETTINGS_SYNC: "true"
+      ENABLE_WRITE_BRANCH_PREFIX: "false"
+      FROZEN_MAESTRO_ENV_ENABLED: "false"
+      UPLOAD_CODE_CHECKPOINTS: "true"
+resources:
+  cpu: "4"
+  memory: "16G"
+shouldArchiveLogsToOutputs: false

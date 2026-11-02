@@ -1,0 +1,23 @@
+import { addDependency } from "@osdk/maker";
+// @ts-ignore
+addDependency("aml", new URL(import.meta.url).pathname);
+export { amlTransaction } from "./codegen/object-types/amlTransaction.js";
+export { amlTransactionRiskScore } from "./codegen/object-types/amlTransactionRiskScore.js";
+export { amlAccount } from "./codegen/object-types/amlAccount.js";
+export { amlAlert } from "./codegen/object-types/amlAlert.js";
+export { amlInvestigationCase } from "./codegen/object-types/amlInvestigationCase.js";
+export { amlLaunderingPattern } from "./codegen/object-types/amlLaunderingPattern.js";
+export { amlModelEvaluation } from "./codegen/object-types/amlModelEvaluation.js";
+export { amlTriageAlert } from "./codegen/action-types/amlTriageAlert.js";
+export { amlCloseFalsePositive } from "./codegen/action-types/amlCloseFalsePositive.js";
+export { amlAssignAlertToCase } from "./codegen/action-types/amlAssignAlertToCase.js";
+export { amlOpenCase } from "./codegen/action-types/amlOpenCase.js";
+export { amlUpdateCase } from "./codegen/action-types/amlUpdateCase.js";
+export { amlSent } from "./codegen/link-types/amlSent.js";
+export { amlReceived } from "./codegen/link-types/amlReceived.js";
+export { amlHasScore } from "./codegen/link-types/amlHasScore.js";
+export { amlConcerns } from "./codegen/link-types/amlConcerns.js";
+export { amlSubject } from "./codegen/link-types/amlSubject.js";
+export { amlCounterparty } from "./codegen/link-types/amlCounterparty.js";
+export { amlAggregates } from "./codegen/link-types/amlAggregates.js";
+export { amlGroundTruth } from "./codegen/link-types/amlGroundTruth.js";

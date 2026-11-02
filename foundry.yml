@@ -1,0 +1,12 @@
+minCliVersion: "0.354.0"
+migrationVersion: 0
+components:
+  - type: ONTOLOGY
+    path: ./ontology
+bundle:
+  name: "aml-investigator-ontology"
+  description: "AML Investigation ontology: Transaction, Risk Score, Account, Alert, Case (+ demo ground truth) with triage/escalation actions, backed by 03_Scored_Data"
+  mavenCoordinate: "com.saisplayground:aml-investigator-ontology"
+  installMode: SINGLETON
+osdkOutput: ontology/osdk-output
+apiNamespace: aml

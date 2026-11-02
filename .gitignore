@@ -1,0 +1,30 @@
+# environments & deps
+.venv/
+node_modules/
+__pycache__/
+*.py[cod]
+
+# data (1 GB; IBM AML HI-Small from Kaggle — see README for how to fetch)
+data/
+
+# build outputs (regenerate with `foundry build ontology && foundry bundle`)
+build/
+ontology/build/
+
+# model checkpoints
+*.pt
+checkpoints/
+
+# the Foundry workspace clone keeps its own git metadata here (see README)
+gnn_workspace_repo/.git_foundry/
+
+# local noise
+.DS_Store
+foundry.yml.bak
+/.children.json
+/.probe.json
+/.sreq.json
+/.sres.json
+/.vec.json
+gnn_workspace_repo/.imp.json
+gnn_workspace_repo/last_error.txt

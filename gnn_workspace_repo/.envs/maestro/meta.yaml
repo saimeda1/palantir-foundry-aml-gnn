@@ -1,0 +1,19 @@
+package:
+  name: '{{ PACKAGE_NAME }}'
+  version: '{{ PACKAGE_VERSION }}'
+source:
+  path: ../src
+requirements:
+  run:
+  - ipykernel
+  - pip
+  - foundry-transforms-lib-python
+  - pandas
+  - pytorch 2.3.1 cuda120_py312h26b3cf7_300
+  - libtorch 2.3.1 cuda120_h2b0da52_300
+  - pyg 2.6.1 py312_torch_2.3.0_cpu
+  - pyg-lib 0.4.0 cuda120py312hc073071_1
+  - scikit-learn
+  - palantir
+  - containers-external-systems-python
+  - palantir_models>=0.2645.0

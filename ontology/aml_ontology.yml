@@ -1,0 +1,232 @@
+# Declarative Ontology spec for the AML Investigation workflow — v2 (2026-10-29),
+# aligned 1:1 with the backing datasets actually published to
+# /AML_Compliance_Platform/03_Scored_Data (columns and RIDs below are real).
+# Apply in Ontology Manager (object type → "from dataset"), or via ontology-as-code.
+#
+# Champion model: aml_gnn_hi_small v1
+#   ri.models.main.model-version.5f131650-5723-40a5-9d29-aa58b7960f3b
+#   (val PR-AUC 0.564; test stream: PR-AUC 0.191, ROC-AUC 0.949,
+#    High band precision 0.67, precision@100 0.91)
+
+objectTypes:
+
+  Transaction:
+    displayName: Transaction
+    pluralDisplayName: Transactions
+    primaryKey: transaction_id
+    titleProperty: transaction_id
+    backingDataset: /AML_Compliance_Platform/03_Scored_Data/scored_transactions_stream
+    backingDatasetRid: ri.foundry.main.dataset.77edf771-f067-48bf-947f-43f5189fa776
+    rows: 1015670
+    properties:
+      transaction_id:            {type: long}
+      timestamp:                 {type: timestamp}
+      from_account:              {type: string, description: "bank|account composite key (FK → Account)"}
+      to_account:                {type: string, description: "bank|account composite key (FK → Account)"}
+      from_bank:                 {type: string}
+      to_bank:                   {type: string}
+      amount_usd:                {type: double, displayName: "Amount (paid)"}
+      amount_received:           {type: double}
+      payment_currency:          {type: string}
+      receiving_currency:        {type: string}
+      payment_format:            {type: string}
+      laundering_probability:    {type: double, description: "champion model score (denormalised for Vertex edge styling)"}
+      risk_band:                 {type: string, allowedValues: [Low, Medium, High]}
+      is_laundering_ground_truth: {type: integer, description: "DEMO ONLY — hide from investigator views; used by the evaluation page"}
+
+  TransactionRiskScore:
+    displayName: Transaction Risk Score
+    pluralDisplayName: Transaction Risk Scores
+    primaryKey: score_id
+    titleProperty: score_id
+    backingDataset: /AML_Compliance_Platform/03_Scored_Data/transaction_risk_scores
+    backingDatasetRid: ri.foundry.main.dataset.b83aab09-9d6c-45c0-a679-05f198e8106c
+    rows: 1015670
+    properties:
+      score_id:                 {type: string, description: "transaction_id|model_version"}
+      transaction_id:           {type: long}
+      laundering_probability:   {type: double}
+      risk_band:                {type: string}
+      model_version:            {type: string, description: "model-version RID; one row per (txn, model) → challengers union here"}
+      scored_ts:                {type: timestamp}
+
+  Account:
+    displayName: Account
+    pluralDisplayName: Accounts
+    primaryKey: account_id
+    titleProperty: account_id
+    backingDataset: /AML_Compliance_Platform/03_Scored_Data/accounts_summary
+    backingDatasetRid: ri.foundry.main.dataset.c808a42f-96b0-432a-a584-d0bfe44b3cc5
+    rows: 515088
+    properties:
+      account_id:            {type: string, description: "bank|account"}
+      bank_id:               {type: string}
+      volume_24h_inbound:    {type: double, displayName: "24h Inbound Volume"}
+      volume_24h_outbound:   {type: double, displayName: "24h Outbound Volume"}
+      total_txn_count:       {type: integer}
+      counterparty_count:    {type: integer}
+      max_risk_score:        {type: double}
+      risk_tier:             {type: string, allowedValues: [Low, Medium, High], description: "max_risk_score cut at the calibrated thresholds"}
+      high_risk_txn_count:   {type: integer}
+      last_active_ts:        {type: timestamp}
+
+  Alert:
+    displayName: AML Alert
+    pluralDisplayName: AML Alerts
+    primaryKey: alert_id
+    titleProperty: alert_id
+    backingDataset: /AML_Compliance_Platform/03_Scored_Data/alerts
+    backingDatasetRid: ri.foundry.main.dataset.6e29110d-b2b8-4033-8aef-2c98f10f047f
+    rows: 2411   # 269 High (P1) + 334 Medium P2 + 1808 Medium P3
+    editable: true   # status / case_id / priority are modified by actions → enable edits
+    properties:
+      alert_id:                 {type: string, description: "ALT-<transaction_id>"}
+      transaction_id:           {type: long}
+      subject_account_id:       {type: string, description: "sender (FK → Account)"}
+      counterparty_account_id:  {type: string, description: "receiver (FK → Account)"}
+      status:                   {type: string, allowedValues: [Open, Triaged, Escalated, Closed]}
+      priority:                 {type: string, allowedValues: [P1, P2, P3]}
+      primary_typology:         {type: string, description: "derived from the local graph: Fan-In, Fan-Out, Gather-Scatter, Scatter-Gather, Cycle, Structuring-Suspect, Unclassified"}
+      laundering_probability:   {type: double}
+      risk_band:                {type: string}
+      amount_usd:               {type: double}
+      payment_format:           {type: string}
+      alerted_ts:               {type: timestamp}
+      model_version:            {type: string}
+      case_id:                  {type: string, description: "set by escalateToCase (FK → InvestigationCase)"}
+      pattern_id:               {type: string, description: "DEMO ONLY (ground truth) — hide from triage views"}
+      true_typology:            {type: string, description: "DEMO ONLY (ground truth) — hide from triage views"}
+      is_laundering_ground_truth: {type: integer, description: "DEMO ONLY — hide from triage views"}
+
+  InvestigationCase:
+    displayName: Investigation Case
+    pluralDisplayName: Investigation Cases
+    primaryKey: case_id
+    titleProperty: title
+    backingDataset: /AML_Compliance_Platform/03_Scored_Data/investigation_cases
+    backingDatasetRid: ri.foundry.main.dataset.15163afd-d20d-4bf2-995f-05abc44d3e98
+    rows: 0      # user-generated via escalateToCase; enable edits
+    editable: true
+    properties:
+      case_id:        {type: string}
+      title:          {type: string}
+      analyst_notes:  {type: string}
+      sar_required:   {type: boolean}
+      case_status:    {type: string, allowedValues: [Open, In Review, SAR Filed, Closed]}
+      opened_ts:      {type: timestamp}
+      sar_draft:      {type: string, description: "AIP Logic output (draft_sar_narrative); never auto-filed"}
+
+  # --- demo/evaluation only (not part of the investigator surface) ---
+  LaunderingPattern:
+    displayName: Laundering Pattern (ground truth)
+    primaryKey: transaction_id
+    backingDataset: /AML_Compliance_Platform/03_Scored_Data/laundering_patterns
+    backingDatasetRid: ri.foundry.main.dataset.744f4737-a16a-49e2-bc15-cf8789621e64
+    rows: 1339
+    properties:
+      transaction_id: {type: long}
+      pattern_id:     {type: string, description: "HI-Small-P0000..; all txns of one laundering attempt share it"}
+      true_typology:  {type: string, description: "Fan-In, Fan-Out, Cycle, Bipartite, Gather-Scatter, Scatter-Gather, Stack, Random"}
+
+  ModelEvaluation:
+    displayName: Model Evaluation
+    primaryKey: metric
+    backingDataset: /AML_Compliance_Platform/03_Scored_Data/model_evaluation
+    backingDatasetRid: ri.foundry.main.dataset.2144c316-fef1-4435-85b6-6c78a59f7818
+    rows: 7
+    properties:
+      metric:        {type: string, description: "band_High | band_Medium | band_Low | precision_at_100/500/1000/5000"}
+      n:             {type: integer}
+      precision:     {type: double}
+      recall:        {type: double}
+      model_version: {type: string}
+      positives:     {type: integer}
+      total:         {type: integer}
+
+linkTypes:
+  account_sent_transaction:
+    displayName: sent
+    from: {objectType: Account, property: account_id}
+    to:   {objectType: Transaction, property: from_account}
+    cardinality: ONE_TO_MANY
+  account_received_transaction:
+    displayName: received
+    from: {objectType: Account, property: account_id}
+    to:   {objectType: Transaction, property: to_account}
+    cardinality: ONE_TO_MANY
+  transaction_has_score:
+    displayName: has_score
+    from: {objectType: Transaction, property: transaction_id}
+    to:   {objectType: TransactionRiskScore, property: transaction_id}
+    cardinality: ONE_TO_MANY     # one per model version (champion + challengers)
+  alert_concerns_transaction:
+    displayName: concerns
+    from: {objectType: Transaction, property: transaction_id}
+    to:   {objectType: Alert, property: transaction_id}
+    cardinality: ONE_TO_MANY
+  alert_subject_account:
+    displayName: subject
+    from: {objectType: Account, property: account_id}
+    to:   {objectType: Alert, property: subject_account_id}
+    cardinality: ONE_TO_MANY
+  alert_counterparty_account:
+    displayName: counterparty
+    from: {objectType: Account, property: account_id}
+    to:   {objectType: Alert, property: counterparty_account_id}
+    cardinality: ONE_TO_MANY
+  case_aggregates_alerts:
+    displayName: aggregates
+    from: {objectType: InvestigationCase, property: case_id}
+    to:   {objectType: Alert, property: case_id}
+    cardinality: ONE_TO_MANY
+  transaction_ground_truth:
+    displayName: ground_truth
+    from: {objectType: Transaction, property: transaction_id}
+    to:   {objectType: LaunderingPattern, property: transaction_id}
+    cardinality: ONE_TO_ONE
+
+actionTypes:
+  triageAlert:
+    displayName: Triage Alert
+    parameters:
+      alert:       {type: objectReference, objectType: Alert}
+      disposition: {type: string, allowedValues: [Confirmed Suspicious, Needs Info]}
+      note:        {type: string, required: false}
+    rules:
+      - modifyObject: {object: alert, set: {status: Triaged}}
+    submissionCriteria:
+      - condition: "alert.status == 'Open'"
+        failureMessage: "Only Open alerts can be triaged."
+
+  escalateToCase:
+    displayName: Escalate to Investigation Case
+    parameters:
+      alerts:        {type: objectReferenceList, objectType: Alert}
+      case_title:    {type: string}
+      analyst_notes: {type: string, required: false}
+    rules:
+      - createObject:
+          objectType: InvestigationCase
+          set: {case_id: "{uuid}", title: "{case_title}", case_status: Open, sar_required: false,
+                analyst_notes: "{analyst_notes}", opened_ts: "{now}"}
+      - modifyObjectList: {objects: alerts, set: {status: Escalated, case_id: "{created.case_id}"}}
+
+  closeFalsePositive:
+    displayName: Close as False Positive
+    parameters:
+      alert:  {type: objectReference, objectType: Alert}
+      reason: {type: string}
+    rules:
+      - modifyObject: {object: alert, set: {status: Closed}}
+    sideEffects:
+      - writebackDataset: /AML_Compliance_Platform/03_Scored_Data/alert_dispositions   # feeds retraining / threshold review
+
+  updateCase:
+    displayName: Update Case
+    parameters:
+      case:          {type: objectReference, objectType: InvestigationCase}
+      case_status:   {type: string, allowedValues: [Open, In Review, SAR Filed, Closed]}
+      sar_required:  {type: boolean}
+      analyst_notes: {type: string, required: false}
+    rules:
+      - modifyObject: {object: case, set: {case_status: "{case_status}", sar_required: "{sar_required}", analyst_notes: "{analyst_notes}"}}

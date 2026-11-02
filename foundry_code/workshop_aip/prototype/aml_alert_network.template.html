@@ -1,0 +1,476 @@
+<title>AML Alert Network</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: investigator console — inbox | network graph | evidence panel; second view = model evaluation grid */
+:root{
+  --bg:#f6f6f3; --surface:#fcfcfb; --surface-2:#f0efec; --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+  --line:#e1e0d9; --axis:#c3c2b7; --ring:rgba(11,11,11,.10);
+  --accent:#2a78d6; --accent-ink:#1c5cab;
+  --high:#d03b3b; --med:#fab219; --low:#a8a69e; --pattern:#6250d6; --good:#006300;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --seq1:#cde2fb; --seq2:#9ec5f4; --seq3:#5598e7; --seq4:#256abf; --seq5:#104281;
+  --font:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f0f0e; --surface:#1a1a19; --surface-2:#242422; --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781;
+  --line:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10);
+  --accent:#3987e5; --accent-ink:#86b6ef;
+  --high:#e05a5a; --med:#fab219; --low:#6d6c66; --pattern:#9085e9; --good:#0ca30c;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+  --seq1:#184f95; --seq2:#1c5cab; --seq3:#2a78d6; --seq4:#6da7ec; --seq5:#b7d3f6;
+  color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0f0f0e; --surface:#1a1a19; --surface-2:#242422; --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781;
+  --line:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10);
+  --accent:#3987e5; --accent-ink:#86b6ef;
+  --high:#e05a5a; --med:#fab219; --low:#6d6c66; --pattern:#9085e9; --good:#0ca30c;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+  --seq1:#184f95; --seq2:#1c5cab; --seq3:#2a78d6; --seq4:#6da7ec; --seq5:#b7d3f6;
+  color-scheme:dark }
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:13px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 16px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+h1,h2,h3{margin:0;font-weight:600;text-wrap:balance}
+h1{font-size:15px;letter-spacing:.01em}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-2)}
+h3{font-size:13px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer}
+button:hover{border-color:var(--axis)}
+button:focus-visible,a:focus-visible,input:focus-visible,.row:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button:disabled{opacity:.45;cursor:default}
+input[type=search]{font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 9px;width:100%}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:transparent;padding:5px 10px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--ink);color:var(--bg)}
+
+/* top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding-block:12px 10px;border-bottom:1px solid var(--line)}
+.top .brand{display:flex;align-items:baseline;gap:10px}
+.top .brand small{color:var(--muted)}
+.top .spacer{flex:1}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:500;border:1px solid var(--ring);background:var(--surface-2);white-space:nowrap}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.chip.High{color:var(--high)} .chip.Medium{color:#8a5a00} .chip.Low{color:var(--ink-2)}
+:root[data-theme="dark"] .chip.Medium{color:var(--med)}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .chip.Medium{color:var(--med)} }
+.chip.pattern{color:var(--pattern)}
+.chip.status{color:var(--ink-2)}
+.toggle{display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none}
+.toggle .sw{width:30px;height:17px;border-radius:999px;background:var(--axis);position:relative;transition:background .15s}
+.toggle .sw::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:left .15s}
+.toggle.on .sw{background:var(--pattern)} .toggle.on .sw::after{left:15px}
+
+/* investigate layout */
+.console{display:grid;grid-template-columns:300px minmax(0,1fr) 330px;gap:14px;padding-top:14px;align-items:start}
+@media (max-width:1100px){.console{grid-template-columns:260px minmax(0,1fr)} .panel.evidence{grid-column:1/-1}}
+@media (max-width:760px){.console{grid-template-columns:1fr} .panel{min-width:0}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;min-width:0}
+.panel .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.panel .hd small{color:var(--muted)}
+.inbox .tools{padding:10px 12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.inbox .list{max-height:calc(100vh - 260px);overflow:auto}
+.row{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.row:hover{background:var(--surface-2)}
+.row.sel{background:var(--surface-2);box-shadow:inset 3px 0 0 var(--accent)}
+.row .id{font-family:var(--mono);font-size:12px}
+.row .p{font-weight:600;text-align:right}
+.row .sub{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;color:var(--ink-2);font-size:12px}
+.row .bar{grid-column:1/-1;height:3px;background:var(--surface-2);border-radius:2px;overflow:hidden}
+.row .bar i{display:block;height:100%;background:var(--accent)}
+.row .bar i.High{background:var(--high)} .row .bar i.Medium{background:var(--med)}
+.gt{width:8px;height:8px;border-radius:2px;display:inline-block;background:var(--pattern)} .gt.no{background:transparent;border:1px solid var(--muted)}
+
+.graph .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.graph svg{display:block;width:100%;height:560px;background:var(--surface);border-radius:0 0 8px 8px;touch-action:none}
+@media (max-width:760px){.graph svg{height:440px}}
+.graph .legend{display:flex;flex-wrap:wrap;gap:12px;padding:8px 12px;border-top:1px solid var(--line);color:var(--ink-2);font-size:12px}
+.legend .k{display:inline-flex;align-items:center;gap:6px}
+.legend .ln{width:18px;height:0;border-top:3px solid}
+.legend .nd{width:11px;height:11px;border-radius:50%}
+.node circle{stroke:var(--surface);stroke-width:1.5px;cursor:pointer}
+.node.seed circle{stroke:var(--ink);stroke-width:2.5px}
+.node text{font-size:11px;fill:var(--ink);paint-order:stroke;stroke:var(--surface);stroke-width:3px;pointer-events:none;font-weight:500}
+.node.dim{opacity:.25}
+.edge{fill:none;cursor:pointer;opacity:.85}
+.edge.seedtx{opacity:1}
+.edge.pat{stroke-dasharray:5 3}
+.edge.dim{opacity:.08}
+.edge-hit{fill:none;stroke:transparent;stroke-width:12px;cursor:pointer}
+.tip{position:fixed;z-index:20;pointer-events:none;background:var(--ink);color:var(--bg);padding:7px 9px;border-radius:6px;font-size:12px;max-width:280px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.tip b{font-weight:600}
+.tip .mono{opacity:.85}
+
+.evidence .body{padding:12px;display:flex;flex-direction:column;gap:14px}
+.card{border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.card .t{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.card .t h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:500}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12px}
+.kv dt{color:var(--ink-2);margin:0} .kv dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.kv dd.mono{font-size:11px;word-break:break-all}
+.big{font-size:26px;font-weight:600;line-height:1.1}
+.big small{font-size:12px;font-weight:400;color:var(--muted);margin-left:6px}
+.actions{display:flex;flex-wrap:wrap;gap:6px}
+.note{font-size:11px;color:var(--muted)}
+.summary p{margin:0 0 6px} .summary p:last-child{margin:0}
+.reveal{border-color:var(--pattern);background:color-mix(in oklab,var(--pattern) 8%,var(--surface))}
+.flag{color:var(--high);font-weight:500}
+.okflag{color:var(--good);font-weight:500}
+
+/* evaluation */
+.eval{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px;padding-top:14px}
+.eval>.panel{grid-column:span 6}
+.eval>.panel.w4{grid-column:span 4} .eval>.panel.w8{grid-column:span 8} .eval>.panel.w12{grid-column:span 12}
+@media (max-width:900px){.eval>.panel,.eval>.panel.w4,.eval>.panel.w8{grid-column:span 12}}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;padding-top:14px}
+@media (max-width:900px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.tile .l{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.tile .v{font-size:28px;font-weight:600;line-height:1.1}
+.tile .c{font-size:12px;color:var(--ink-2)}
+.panel .bd{padding:12px}
+.panel .bd p{margin:0 0 8px;max-width:68ch;color:var(--ink-2)}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{font-family:var(--font);font-size:11px;fill:var(--ink-2)}
+.chart .grid line{stroke:var(--line)} .chart .axis line,.chart .axis path{stroke:var(--axis)}
+.chart .lbl{fill:var(--ink);font-weight:500}
+.chart .cell-t{fill:var(--ink);font-size:11px;text-anchor:middle;dominant-baseline:central}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.tbl{overflow-x:auto}
+.leg{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--ink-2);padding:0 12px 10px}
+.leg .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div class="top">
+  <div class="brand"><h1>AML Alert Network</h1><small>HI-Small test stream · 8–18 Sep 2022 · GNN champion v1</small></div>
+  <div class="seg" role="tablist">
+    <button id="tab-inv" class="on" role="tab">Investigate</button>
+    <button id="tab-eval" role="tab">Model evaluation</button>
+  </div>
+  <div class="spacer"></div>
+  <label class="toggle" id="reveal"><span class="sw"></span><span>Reveal ground truth</span></label>
+</div>
+
+<section id="view-inv" class="console">
+  <div class="panel inbox">
+    <div class="hd"><h2>Alert inbox</h2><small id="inbox-count"></small></div>
+    <div class="tools">
+      <input type="search" id="q" placeholder="Search alert, account, typology">
+      <div class="seg" id="bandf"><button data-b="all" class="on">All</button><button data-b="High">P1 · High</button><button data-b="Medium">Medium</button></div>
+    </div>
+    <div class="list" id="list" role="listbox"></div>
+  </div>
+
+  <div class="panel graph">
+    <div class="controls">
+      <span class="seg" id="hops"><button data-h="0">Alert only</button><button data-h="1">±72h around accounts</button><button data-h="2" class="on">Second hop</button></span>
+      <span class="seg" id="layout"><button data-l="force" class="on">Force</button><button data-l="flow">Flow</button></span>
+      <span class="spacer"></span>
+      <button id="fit">Fit</button>
+    </div>
+    <svg id="svg" role="img" aria-label="Transaction network around the selected alert"></svg>
+    <div class="legend">
+      <span class="k"><i class="ln" style="border-color:var(--high)"></i>High (≥0.623)</span>
+      <span class="k"><i class="ln" style="border-color:var(--med)"></i>Medium (≥0.351)</span>
+      <span class="k"><i class="ln" style="border-color:var(--low)"></i>Low</span>
+      <span class="k"><i class="ln" style="border-color:var(--pattern);border-top-style:dashed"></i>Ground-truth pattern</span>
+      <span class="k"><i class="nd" style="background:var(--surface);border:2.5px solid var(--ink)"></i>Subject / counterparty</span>
+      <span class="k">Node size = counterparties · edge width = amount</span>
+    </div>
+  </div>
+
+  <div class="panel evidence"><div class="hd"><h2>Evidence</h2><small id="ev-sub"></small></div><div class="body" id="evidence"></div></div>
+</section>
+
+<section id="view-eval" hidden>
+  <div class="tiles" id="tiles"></div>
+  <div class="eval">
+    <div class="panel chart w6"><div class="hd"><h2>Precision at k</h2><small>top-k transactions by score, whole test stream</small></div><div class="bd" id="c-pk"></div></div>
+    <div class="panel chart w6"><div class="hd"><h2>Risk bands</h2><small>share of true laundering in each band</small></div><div class="bd" id="c-bands"></div></div>
+    <div class="panel chart w7"><div class="hd"><h2>Score distribution</h2><small>laundering vs legitimate transactions, log count</small></div><div class="bd" id="c-hist"></div></div>
+    <div class="panel chart w5"><div class="hd"><h2>Derived typology vs true</h2><small>alerts that are real laundering, n = <span id="conf-n"></span></small></div><div class="bd" id="c-conf"></div></div>
+    <div class="panel w12"><div class="hd"><h2>Reading the numbers</h2><small>what to tell an investigator</small></div><div class="bd" id="c-notes"></div></div>
+    <div class="panel w12"><div class="hd"><h2>model_evaluation dataset</h2><small>as published to 03_Scored_Data</small></div><div class="bd tbl" id="c-table"></div></div>
+  </div>
+</section>
+
+<div class="tip" id="tip" hidden></div>
+<script id="data" type="application/json">__DATA__</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+const DATA = JSON.parse(document.getElementById('data').textContent);
+const A = DATA.alerts, E = DATA.eval;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmtUSD = d3.format('$,.0f'), fmtN = d3.format(','), fmtP = d3.format('.3f');
+const state = {alert: A[0], hops: 2, layout: 'force', reveal: false, band: 'all', q: '', status: {}, focus: null};
+try { const s = localStorage.getItem('aml.hops'); if (s) state.hops = +s; } catch (e) {}
+const bandColor = b => b === 'High' ? css('--high') : b === 'Medium' ? css('--med') : css('--low');
+const tierColor = t => t === 'High' ? css('--high') : t === 'Medium' ? css('--med') : css('--low');
+
+/* ---------- tabs & toggles ---------- */
+const $ = s => document.querySelector(s);
+$('#tab-inv').onclick = () => setView('inv'); $('#tab-eval').onclick = () => setView('eval');
+function setView(v) {
+  $('#view-inv').hidden = v !== 'inv'; $('#view-eval').hidden = v !== 'eval';
+  $('#tab-inv').classList.toggle('on', v === 'inv'); $('#tab-eval').classList.toggle('on', v === 'eval');
+  if (v === 'eval' && !evalDrawn) drawEval();
+}
+$('#reveal').onclick = () => { state.reveal = !state.reveal; $('#reveal').classList.toggle('on', state.reveal); renderAll(); };
+$('#hops').onclick = e => { const b = e.target.closest('button'); if (!b) return; state.hops = +b.dataset.h; try { localStorage.setItem('aml.hops', state.hops); } catch (x) {} seg('#hops', 'h', state.hops); drawGraph(); };
+$('#layout').onclick = e => { const b = e.target.closest('button'); if (!b) return; state.layout = b.dataset.l; seg('#layout', 'l', state.layout); drawGraph(); };
+$('#bandf').onclick = e => { const b = e.target.closest('button'); if (!b) return; state.band = b.dataset.b; seg('#bandf', 'b', state.band); renderList(); };
+$('#q').oninput = e => { state.q = e.target.value.toLowerCase(); renderList(); };
+function seg(sel, k, v) { document.querySelectorAll(sel + ' button').forEach(b => b.classList.toggle('on', b.dataset[k] == v)); }
+seg('#hops', 'h', state.hops);
+
+/* ---------- inbox ---------- */
+function renderList() {
+  const rows = A.filter(a => (state.band === 'all' || a.band === state.band) &&
+    (!state.q || [a.id, a.subj, a.cp, a.typ, a.truth.typ || ''].join(' ').toLowerCase().includes(state.q)));
+  $('#inbox-count').textContent = `${rows.length} of ${A.length} loaded · ${fmtN(E.nalerts)} total`;
+  const list = $('#list'); list.innerHTML = '';
+  for (const a of rows) {
+    const st = state.status[a.id] || a.status;
+    const el = document.createElement('div'); el.className = 'row' + (a === state.alert ? ' sel' : ''); el.tabIndex = 0; el.setAttribute('role', 'option');
+    el.innerHTML = `<span class="id">${a.id}</span><span class="p num">${fmtP(a.p)}</span>
+      <span class="bar"><i class="${a.band}" style="width:${a.p * 100}%"></i></span>
+      <span class="sub">${state.reveal ? `<span class="gt ${a.truth.gt ? '' : 'no'}" title="${a.truth.gt ? 'true laundering' : 'legitimate'}"></span>` : ''}
+        <span class="chip ${a.band}"><span class="dot"></span>${a.prio}</span><span>${a.typ}</span><span class="num">${fmtUSD(a.amt)}</span>${st !== 'Open' ? `<span class="chip status">${st}</span>` : ''}</span>`;
+    el.onclick = () => select(a); el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(a); } };
+    list.appendChild(el);
+  }
+}
+function select(a) { state.alert = a; state.focus = null; renderAll(); }
+function renderAll() { renderList(); drawGraph(); renderEvidence(); }
+
+/* ---------- graph ---------- */
+const svg = d3.select('#svg'); const gRoot = svg.append('g');
+const defs = svg.append('defs');
+for (const [k, v] of [['High', '--high'], ['Medium', '--med'], ['Low', '--low'], ['pat', '--pattern']]) {
+  defs.append('marker').attr('id', 'arr-' + k).attr('viewBox', '0 -4 8 8').attr('refX', 8).attr('markerWidth', 7).attr('markerHeight', 7).attr('orient', 'auto')
+    .append('path').attr('d', 'M0,-4L8,0L0,4Z').attr('fill', `var(${v})`);
+}
+const gE = gRoot.append('g'), gH = gRoot.append('g'), gN = gRoot.append('g');
+const zoom = d3.zoom().scaleExtent([0.2, 6]).on('zoom', e => gRoot.attr('transform', e.transform));
+svg.call(zoom).on('dblclick.zoom', null);
+let sim = null, curNodes = [], curEdges = [];
+const wScale = d3.scaleLog().domain([100, 2e6]).range([1, 5.5]).clamp(true);
+const rScale = d3.scaleSqrt().domain([1, 400]).range([5, 19]).clamp(true);
+const tip = $('#tip');
+function showTip(html, ev) { tip.innerHTML = html; tip.hidden = false; const x = Math.min(ev.clientX + 12, innerWidth - 300), y = Math.min(ev.clientY + 12, innerHeight - 120); tip.style.left = x + 'px'; tip.style.top = y + 'px'; }
+function hideTip() { tip.hidden = true; }
+
+function visibleEdges(a) { return a.edges.filter(e => e.hop <= state.hops || (state.reveal && e.pat)); }
+function drawGraph() {
+  const a = state.alert; const W = svg.node().clientWidth || 800, H = svg.node().clientHeight || 560;
+  const edges = visibleEdges(a).map(e => ({...e}));
+  const ids = new Set(); edges.forEach(e => { ids.add(e.s); ids.add(e.d); });
+  const nodeById = new Map(a.nodes.map(n => [n.id, n]));
+  const prev = new Map(curNodes.map(n => [n.id, n]));
+  const nodes = [...ids].map(id => { const n = {...nodeById.get(id)}; const p = prev.get(id); if (p) { n.x = p.x; n.y = p.y; } return n; });
+  const seeds = new Set([a.subj, a.cp]);
+  // flow group: -1 sends toward seeds, +1 receives from seeds, 0 seed
+  const grp = new Map(); for (const n of nodes) grp.set(n.id, seeds.has(n.id) ? 0 : null);
+  for (const e of edges) { if (seeds.has(e.d) && !seeds.has(e.s)) grp.set(e.s, -1); if (seeds.has(e.s) && !seeds.has(e.d)) grp.set(e.d, 1); }
+  for (const e of edges) { if (grp.get(e.s) == null && grp.get(e.d) != null) grp.set(e.s, grp.get(e.d) - 1); if (grp.get(e.d) == null && grp.get(e.s) != null) grp.set(e.d, grp.get(e.s) + 1); }
+  for (const n of nodes) { n.g = grp.get(n.id) ?? 0; n.seed = seeds.has(n.id); }
+  curNodes = nodes; curEdges = edges;
+  if (sim) sim.stop();
+  sim = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(edges).id(d => d.id).distance(e => e.hop === 0 ? 120 : e.hop === 1 ? 70 : 45).strength(.5))
+    .force('charge', d3.forceManyBody().strength(n => n.seed ? -500 : -140))
+    .force('collide', d3.forceCollide(n => rScale(n.ncp || 1) + 4))
+    .force('x', d3.forceX(n => W / 2 + (state.layout === 'flow' ? n.g * Math.min(190, W / 5) : 0)).strength(state.layout === 'flow' ? .5 : .04))
+    .force('y', d3.forceY(H / 2).strength(.05))
+    .alpha(1).alphaDecay(.03);
+  const edgeCls = e => 'edge' + (e.seed ? ' seedtx' : '') + (state.reveal && e.pat ? ' pat' : '');
+  const edgeStroke = e => (state.reveal && e.pat) ? css('--pattern') : bandColor(e.band);
+  const edgeMarker = e => `url(#arr-${(state.reveal && e.pat) ? 'pat' : e.band})`;
+  const es = gE.selectAll('path').data(edges, e => e.id).join('path').attr('class', edgeCls).attr('stroke', edgeStroke).attr('stroke-width', e => wScale(e.amt) + (e.seed ? 1.5 : 0)).attr('marker-end', edgeMarker);
+  const hs = gH.selectAll('path').data(edges, e => e.id).join('path').attr('class', 'edge-hit')
+    .on('mousemove', (ev, e) => showTip(edgeTip(e), ev)).on('mouseleave', hideTip).on('click', (ev, e) => { state.focus = {type: 'tx', e}; renderEvidence(); });
+  const ns = gN.selectAll('g').data(nodes, n => n.id).join(enter => { const g = enter.append('g'); g.append('circle'); g.append('text'); return g; })
+    .attr('class', n => 'node' + (n.seed ? ' seed' : ''))
+    .on('mousemove', (ev, n) => showTip(nodeTip(n), ev)).on('mouseleave', hideTip).on('click', (ev, n) => { state.focus = {type: 'acct', n}; renderEvidence(); })
+    .call(d3.drag().on('start', (ev, n) => { if (!ev.active) sim.alphaTarget(.3).restart(); n.fx = n.x; n.fy = n.y; }).on('drag', (ev, n) => { n.fx = ev.x; n.fy = ev.y; }).on('end', (ev, n) => { if (!ev.active) sim.alphaTarget(0); n.fx = null; n.fy = null; }));
+  ns.select('circle').attr('r', n => rScale(n.ncp || 1)).attr('fill', n => tierColor(n.tier));
+  ns.select('text').attr('dy', n => -rScale(n.ncp || 1) - 4).attr('text-anchor', 'middle').text(n => n.id === a.subj ? 'Subject' : n.id === a.cp ? 'Counterparty' : (n.alerts > 0 ? `${n.alerts} alert${n.alerts > 1 ? 's' : ''}` : ''));
+  sim.on('tick', () => {
+    const path = e => { const dx = e.target.x - e.source.x, dy = e.target.y - e.source.y, len = Math.hypot(dx, dy) || 1, r = rScale(e.target.ncp || 1) + 2; const tx = e.target.x - dx / len * r, ty = e.target.y - dy / len * r; const bend = e.id % 2 ? 0.12 : -0.12; const mx = (e.source.x + tx) / 2 - dy * bend, my = (e.source.y + ty) / 2 + dx * bend; return `M${e.source.x},${e.source.y}Q${mx},${my} ${tx},${ty}`; };
+    es.attr('d', path); hs.attr('d', path); ns.attr('transform', n => `translate(${n.x},${n.y})`);
+  });
+  sim.on('end', fit); setTimeout(fit, 900);
+}
+function fit() {
+  if (!curNodes.length) return; const W = svg.node().clientWidth, H = svg.node().clientHeight;
+  const xs = d3.extent(curNodes, n => n.x), ys = d3.extent(curNodes, n => n.y);
+  const w = (xs[1] - xs[0]) + 80, h = (ys[1] - ys[0]) + 80, k = Math.min(4, 0.95 / Math.max(w / W, h / H));
+  svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(W / 2 - k * (xs[0] + xs[1]) / 2, H / 2 - k * (ys[0] + ys[1]) / 2).scale(k));
+}
+$('#fit').onclick = fit;
+const nodeTip = n => `<b>${n.id}</b><br><span class="mono">bank ${n.bank || '?'} · ${n.tier || '?'} tier</span><br>24h in ${fmtUSD(n.vin || 0)} · out ${fmtUSD(n.vout || 0)}<br>${fmtN(n.ncp || 0)} counterparties · ${fmtN(n.ntx || 0)} txns · max score ${fmtP(n.maxp || 0)}${n.alerts ? `<br>${n.alerts} alert(s) as subject or counterparty` : ''}`;
+const edgeTip = e => `<b>${fmtUSD(e.amt)}</b> ${e.fmt} · <span class="mono">tx ${e.id}</span><br>${e.ts}<br>score ${fmtP(e.p)} · ${e.band}${state.reveal ? `<br>${e.gt ? 'ground truth: laundering' : 'ground truth: legitimate'}${e.pat ? ' · in alert pattern' : ''}` : ''}`;
+
+/* ---------- evidence panel ---------- */
+function summarize(a) {
+  const ed = a.edges.filter(e => e.hop <= 1);
+  const out = ed.filter(e => e.s === a.subj), inn = ed.filter(e => e.d === a.subj);
+  const outCp = new Set(out.map(e => e.d)), inCp = new Set(inn.map(e => e.s));
+  const sum = xs => d3.sum(xs, e => e.amt);
+  // cycle search from subject along shown edges, up to 4 hops
+  const adj = new Map(); for (const e of a.edges.filter(e => e.hop <= 2)) { if (!adj.has(e.s)) adj.set(e.s, []); adj.get(e.s).push(e.d); }
+  let cycle = 0; const q = [[a.subj, 0]], seen = new Set();
+  while (q.length && !cycle) { const [n, d] = q.shift(); if (d >= 4) continue; for (const m of adj.get(n) || []) { if (m === a.subj && d >= 1) { cycle = d + 1; break; } const k = m + ':' + (d + 1); if (!seen.has(k)) { seen.add(k); q.push([m, d + 1]); } } }
+  const highN = ed.filter(e => e.band === 'High').length, medN = ed.filter(e => e.band === 'Medium').length;
+  const lines = [];
+  lines.push(`Within ±72 h the subject sent <b>${out.length}</b> payments (${fmtUSD(sum(out))}) to <b>${outCp.size}</b> distinct accounts and received <b>${inn.length}</b> (${fmtUSD(sum(inn))}) from <b>${inCp.size}</b>.`);
+  const ratio = sum(out) / Math.max(1, sum(inn));
+  if (outCp.size >= 5 && out.length >= 2 * Math.max(1, inn.length)) lines.push(`<span class="flag">Fan-out signature:</span> one source dispersing to many fresh counterparties.`);
+  else if (inCp.size >= 5 && inn.length >= 2 * Math.max(1, out.length)) lines.push(`<span class="flag">Fan-in signature:</span> many sources funnelling into the subject.`);
+  else if (ratio > 0.8 && ratio < 1.25 && inn.length && out.length) lines.push(`<span class="flag">Pass-through:</span> inbound and outbound totals nearly match (ratio ${ratio.toFixed(2)}), consistent with layering.`);
+  if (cycle) lines.push(`<span class="flag">Cycle:</span> funds return to the subject within ${cycle} hops in the visible network.`);
+  lines.push(`${highN} other High-band and ${medN} Medium-band transactions sit in this window${highN + medN === 0 ? ', so the alert stands alone' : ''}.`);
+  const sub = a.nodes.find(n => n.id === a.subj);
+  if (sub && sub.alerts > 1) lines.push(`The subject appears on <b>${sub.alerts}</b> alerts in this stream.`);
+  if (sub && sub.vout && sub.vin && sub.vout > 3 * sub.vin) lines.push(`Account profile: 24h outbound volume is ${(sub.vout / sub.vin).toFixed(1)}× inbound.`);
+  return lines.map(l => `<p>${l}</p>`).join('');
+}
+function acctCard(n, role) {
+  if (!n) return '';
+  return `<div class="card"><div class="t"><h3>${role}</h3><span class="chip ${n.tier}"><span class="dot"></span>${n.tier || '?'} tier</span></div>
+    <div class="mono" style="font-size:12px">${n.id}</div>
+    <dl class="kv"><dt>Bank</dt><dd>${n.bank || '?'}</dd><dt>24h inbound</dt><dd>${fmtUSD(n.vin || 0)}</dd><dt>24h outbound</dt><dd>${fmtUSD(n.vout || 0)}</dd>
+    <dt>Counterparties</dt><dd>${fmtN(n.ncp || 0)}</dd><dt>Transactions</dt><dd>${fmtN(n.ntx || 0)}</dd><dt>High-risk txns</dt><dd>${fmtN(n.nhigh || 0)}</dd><dt>Max score</dt><dd>${fmtP(n.maxp || 0)}</dd><dt>Alerts</dt><dd>${n.alerts}</dd></dl></div>`;
+}
+function renderEvidence() {
+  const a = state.alert, st = state.status[a.id] || a.status; const seedTx = a.edges.find(e => e.seed);
+  const byId = new Map(a.nodes.map(n => [n.id, n]));
+  $('#ev-sub').textContent = a.id;
+  let focus = '';
+  if (state.focus && state.focus.type === 'acct') focus = acctCard(byId.get(state.focus.n.id) || state.focus.n, 'Selected account');
+  if (state.focus && state.focus.type === 'tx') { const e = state.focus.e; focus = `<div class="card"><div class="t"><h3>Selected transaction</h3><span class="chip ${e.band}"><span class="dot"></span>${e.band}</span></div>
+    <dl class="kv"><dt>Transaction</dt><dd class="mono">${e.id}</dd><dt>From</dt><dd class="mono">${e.s}</dd><dt>To</dt><dd class="mono">${e.d}</dd><dt>Amount</dt><dd>${fmtUSD(e.amt)} · ${e.fmt}</dd><dt>Time</dt><dd>${e.ts}</dd><dt>Score</dt><dd>${fmtP(e.p)}</dd>${state.reveal ? `<dt>Ground truth</dt><dd>${e.gt ? 'laundering' : 'legitimate'}</dd>` : ''}</dl></div>`; }
+  $('#evidence').innerHTML = `
+    <div class="card"><div class="t"><h3>Alert</h3><span class="chip ${a.band}"><span class="dot"></span>${a.prio} · ${a.band}</span></div>
+      <div class="big num">${fmtP(a.p)}<small>laundering probability</small></div>
+      <dl class="kv"><dt>Status</dt><dd>${st}</dd><dt>Derived typology</dt><dd>${a.typ}</dd><dt>Amount</dt><dd>${fmtUSD(a.amt)} · ${a.fmt}</dd><dt>Alerted</dt><dd>${a.ts}</dd><dt>Transaction</dt><dd class="mono">${a.tx}</dd><dt>Model version</dt><dd class="mono">${a.model}…</dd></dl>
+      <div class="actions">
+        <button class="primary" ${st !== 'Open' ? 'disabled' : ''} data-act="Triaged">Triage</button>
+        <button ${st === 'Escalated' ? 'disabled' : ''} data-act="Escalated">Escalate to case</button>
+        <button ${st === 'Closed' ? 'disabled' : ''} data-act="Closed">Close as false positive</button>
+      </div>
+      <div class="note">Prototype state only. In Foundry these buttons call the Triage, Assign-to-case and Close actions on the AML Alert object, which log to the audit trail.</div>
+    </div>
+    ${state.reveal ? `<div class="card reveal"><div class="t"><h3>Ground truth</h3><span class="chip pattern"><span class="dot"></span>${a.truth.gt ? 'Laundering' : 'Legitimate'}</span></div>
+      ${a.truth.gt ? `<dl class="kv"><dt>True typology</dt><dd>${a.truth.typ}</dd><dt>Pattern</dt><dd class="mono">${a.truth.pid}</dd><dt>Transactions in pattern</dt><dd>${a.truth.n}</dd><dt>Shown as</dt><dd>dashed violet edges</dd></dl>
+      <div class="note">${a.typ === a.truth.typ ? 'The graph heuristic named the same typology as the generator.' : `The heuristic said ${a.typ}; the generator labels it ${a.truth.typ}. Both are views of the same cluster.`}</div>` : `<div class="note">This alert is a false positive in the labelled data. Scored ${fmtP(a.p)} by the model.</div>`}</div>` : ''}
+    ${focus}
+    <div class="card summary"><div class="t"><h3>Network summary</h3><span class="note">rule-based, computed from the graph</span></div>${summarize(a)}
+      <div class="note">The AIP Logic version walks the same links, then asks the model to write this up for the SAR narrative.</div></div>
+    ${acctCard(byId.get(a.subj), 'Subject (sender)')}
+    ${acctCard(byId.get(a.cp), 'Counterparty (receiver)')}`;
+  $('#evidence').querySelectorAll('[data-act]').forEach(b => b.onclick = () => { state.status[a.id] = b.dataset.act; renderList(); renderEvidence(); });
+}
+
+/* ---------- evaluation ---------- */
+let evalDrawn = false;
+function drawEval() {
+  evalDrawn = true;
+  const hb = E.bands.find(b => b.band === 'High'), p100 = E.pk.find(p => p.k === 100);
+  $('#tiles').innerHTML = [
+    ['Precision at 100', fmtP(p100.prec).replace(/0$/, ''), `${p100.hits} of the top 100 scored transactions are laundering`],
+    ['High band precision', (hb.pos / hb.n).toFixed(2), `${hb.pos} of ${hb.n} alerts above the 0.623 threshold`],
+    ['ROC-AUC, test stream', E.rocauc, `PR-AUC ${E.prauc} on ${fmtN(E.n)} transactions`],
+    ['Base rate', (E.pos / E.n * 100).toFixed(2) + '%', `${fmtN(E.pos)} laundering transactions in the stream`]
+  ].map(t => `<div class="tile"><span class="l">${t[0]}</span><span class="v num">${t[1]}</span><span class="c">${t[2]}</span></div>`).join('');
+  drawPK(); drawBands(); drawHist(); drawConf(); drawTable();
+  $('#c-notes').innerHTML = `
+    <p><b>Top of the list is clean.</b> The first 10 are all laundering, the first 100 are 91% laundering. An investigator who works the P1 queue in score order spends two out of three hours on real cases, against a base rate under 0.2%.</p>
+    <p><b>Precision falls fast past the High band.</b> Precision at 500 is ${E.pk.find(p => p.k === 500).prec} and at 5,000 it is ${E.pk.find(p => p.k === 5000).prec}. Medium alerts need the network view and the account profile before they are worth a case; that is what the Investigate tab is for.</p>
+    <p><b>Validation to test gap.</b> Validation PR-AUC was ${E.val.prauc} (best epoch ${E.val.epoch} of ${E.val.epochs}); the held-out stream scores ${E.prauc}. The main suspect is the absolute elapsed-days feature, which the test window extends past. Relativising it is the first change for the challenger model, which lands as a new modelVersion row in Transaction Risk Score rather than replacing the champion.</p>
+    <p><b>Recall is the open question.</b> The High band catches ${hb.pos} of ${fmtN(E.pos)} laundering transactions. Lowering the Medium threshold trades investigator hours for recall; the band chart shows the exchange rate.</p>`;
+}
+function frame(sel, W, H, m) { const svg = d3.select(sel).append('svg').attr('viewBox', `0 0 ${W} ${H}`); return {svg, g: svg.append('g').attr('transform', `translate(${m.l},${m.t})`), w: W - m.l - m.r, h: H - m.t - m.b}; }
+function bindTips(sel, fn) { sel.on('mousemove', (ev, d) => showTip(fn(d), ev)).on('mouseleave', hideTip); }
+function drawPK() {
+  const d = E.pk; const {g, w, h} = frame('#c-pk', 560, 300, {l: 60, t: 10, r: 50, b: 28});
+  const y = d3.scaleBand().domain(d.map(x => x.k)).range([0, h]).padding(.3); const x = d3.scaleLinear().domain([0, 1]).range([0, w]);
+  g.append('g').attr('class', 'grid').selectAll('line').data(x.ticks(5)).join('line').attr('x1', x).attr('x2', x).attr('y1', 0).attr('y2', h);
+  g.append('g').attr('class', 'axis').attr('transform', `translate(0,${h})`).call(d3.axisBottom(x).ticks(5).tickFormat(d3.format('.0%')).tickSize(0)).select('.domain').remove();
+  g.append('g').attr('class', 'axis').call(d3.axisLeft(y).tickFormat(k => 'k = ' + fmtN(k)).tickSize(0)).select('.domain').remove();
+  const bars = g.selectAll('rect').data(d).join('rect').attr('x', 0).attr('y', p => y(p.k)).attr('height', y.bandwidth()).attr('width', p => x(p.prec)).attr('rx', 3).attr('fill', 'var(--s1)');
+  g.selectAll('text.lbl').data(d).join('text').attr('class', 'lbl').attr('x', p => x(p.prec) + 6).attr('y', p => y(p.k) + y.bandwidth() / 2).attr('dominant-baseline', 'central').text(p => d3.format('.0%')(p.prec));
+  bindTips(bars, p => `<b>Top ${fmtN(p.k)}</b><br>${p.hits} laundering → precision ${d3.format('.1%')(p.prec)}`);
+}
+function drawBands() {
+  const d = E.bands.map(b => ({...b, prec: b.pos / b.n})); const {g, w, h} = frame('#c-bands', 560, 300, {l: 70, t: 10, r: 20, b: 28});
+  const y = d3.scaleBand().domain(d.map(b => b.band)).range([0, h]).padding(.3); const x = d3.scaleLinear().domain([0, 1]).range([0, w]);
+  g.append('g').attr('class', 'grid').selectAll('line').data(x.ticks(5)).join('line').attr('x1', x).attr('x2', x).attr('y1', 0).attr('y2', h);
+  g.append('g').attr('class', 'axis').attr('transform', `translate(0,${h})`).call(d3.axisBottom(x).ticks(5).tickFormat(d3.format('.0%')).tickSize(0)).select('.domain').remove();
+  g.append('g').attr('class', 'axis').call(d3.axisLeft(y).tickSize(0)).select('.domain').remove();
+  const a = g.selectAll('rect.a').data(d).join('rect').attr('class', 'a').attr('x', 0).attr('y', b => y(b.band)).attr('height', y.bandwidth()).attr('width', b => Math.max(2, x(b.prec) - 1)).attr('rx', 3).attr('fill', 'var(--s1)');
+  const b2 = g.selectAll('rect.b').data(d).join('rect').attr('class', 'b').attr('x', b => x(b.prec) + 1).attr('y', b => y(b.band)).attr('height', y.bandwidth()).attr('width', b => Math.max(0, w - x(b.prec) - 1)).attr('rx', 3).attr('fill', 'var(--surface-2)').attr('stroke', 'var(--line)');
+  g.selectAll('text.lbl').data(d).join('text').attr('class', 'lbl').attr('x', b => b.prec > .15 ? x(b.prec) - 6 : x(b.prec) + 6).attr('text-anchor', b => b.prec > .15 ? 'end' : 'start').attr('y', b => y(b.band) + y.bandwidth() / 2).attr('dominant-baseline', 'central')
+    .style('fill', b => b.prec > .15 ? '#fff' : 'var(--ink)').text(b => `${d3.format('.1%')(b.prec)} · ${fmtN(b.pos)} of ${fmtN(b.n)}`);
+  const t = b => `<b>${b.band} band</b><br>${fmtN(b.n)} transactions, ${fmtN(b.pos)} laundering<br>precision ${d3.format('.1%')(b.prec)} · recall ${d3.format('.1%')(b.pos / E.pos)}`;
+  bindTips(a, t); bindTips(b2, t);
+  d3.select('#c-bands').append('div').attr('class', 'leg').html(`<span><i class="sw" style="background:var(--s1)"></i>Laundering (ground truth)</span><span><i class="sw" style="background:var(--surface-2);border:1px solid var(--line)"></i>Legitimate</span>`);
+}
+function drawHist() {
+  const d = E.hist; const {g, w, h} = frame('#c-hist', 640, 300, {l: 56, t: 10, r: 10, b: 30});
+  const x = d3.scaleBand().domain(d.map(b => b.lo)).range([0, w]).paddingInner(.25); const y = d3.scaleLog().domain([1, 1e6]).range([h, 0]);
+  g.append('g').attr('class', 'grid').selectAll('line').data([1, 10, 100, 1e3, 1e4, 1e5, 1e6]).join('line').attr('y1', y).attr('y2', y).attr('x1', 0).attr('x2', w);
+  g.append('g').attr('class', 'axis').call(d3.axisLeft(y).tickValues([1, 10, 100, 1e3, 1e4, 1e5, 1e6]).tickFormat(d3.format('~s')).tickSize(0)).select('.domain').remove();
+  g.append('g').attr('class', 'axis').attr('transform', `translate(0,${h})`).call(d3.axisBottom(x).tickValues(d.filter((_, i) => i % 4 === 0).map(b => b.lo)).tickFormat(v => v.toFixed(1)).tickSize(0)).select('.domain').remove();
+  const bw = x.bandwidth() / 2 - 1;
+  const neg = g.selectAll('rect.neg').data(d).join('rect').attr('class', 'neg').attr('x', b => x(b.lo)).attr('width', bw).attr('y', b => b.neg ? y(b.neg) : h).attr('height', b => b.neg ? h - y(b.neg) : 0).attr('rx', 2).attr('fill', 'var(--low)');
+  const pos = g.selectAll('rect.pos').data(d).join('rect').attr('class', 'pos').attr('x', b => x(b.lo) + bw + 2).attr('width', bw).attr('y', b => b.pos ? y(b.pos) : h).attr('height', b => b.pos ? h - y(b.pos) : 0).attr('rx', 2).attr('fill', 'var(--s1)');
+  for (const [v, label] of [[E.thr.medium, 'Medium 0.351'], [E.thr.high, 'High 0.623']]) {
+    const xx = x(Math.floor(v * 20) / 20) + x.bandwidth() * ((v * 20) % 1);
+    g.append('line').attr('x1', xx).attr('x2', xx).attr('y1', 0).attr('y2', h).attr('stroke', 'var(--ink-2)').attr('stroke-dasharray', '3 3');
+    g.append('text').attr('x', xx + 4).attr('y', 10).text(label);
+  }
+  const t = b => `<b>score ${b.lo.toFixed(2)}–${(b.lo + .05).toFixed(2)}</b><br>${fmtN(b.pos)} laundering · ${fmtN(b.neg)} legitimate<br>precision in bin ${d3.format('.1%')(b.pos / Math.max(1, b.pos + b.neg))}`;
+  bindTips(neg, t); bindTips(pos, t);
+  d3.select('#c-hist').append('div').attr('class', 'leg').html(`<span><i class="sw" style="background:var(--s1)"></i>Laundering</span><span><i class="sw" style="background:var(--low)"></i>Legitimate</span><span>Dashed lines: calibrated band thresholds</span>`);
+}
+function drawConf() {
+  const c = E.conf; const n = d3.sum(c.m.flat()); $('#conf-n').textContent = fmtN(n);
+  const {g, w, h} = frame('#c-conf', 460, 330, {l: 118, t: 70, r: 10, b: 10});
+  const x = d3.scaleBand().domain(c.cols).range([0, w]).padding(.06), y = d3.scaleBand().domain(c.rows).range([0, h]).padding(.06);
+  const mx = d3.max(c.m.flat()); const col = d3.scaleQuantize().domain([0, mx]).range(['--seq1', '--seq2', '--seq3', '--seq4', '--seq5'].map(v => `var(${v})`));
+  const cells = c.rows.flatMap((r, i) => c.cols.map((cc, j) => ({r, c: cc, v: c.m[i][j], hit: r === cc})));
+  g.append('g').attr('class', 'axis').call(d3.axisLeft(y).tickSize(0)).select('.domain').remove();
+  g.append('g').attr('class', 'axis').call(d3.axisTop(x).tickSize(0)).select('.domain').remove();
+  g.selectAll('.axis text').filter(function () { return this.parentNode.getAttribute('transform') === null && this.closest('g').getAttribute('transform') === null; });
+  g.selectAll('g.axis:nth-of-type(2) text').attr('transform', 'rotate(-35)').style('text-anchor', 'start');
+  g.append('text').attr('x', -8).attr('y', -58).attr('text-anchor', 'end').text('derived ↓ / true →');
+  const rects = g.selectAll('rect').data(cells).join('rect').attr('x', d => x(d.c)).attr('y', d => y(d.r)).attr('width', x.bandwidth()).attr('height', y.bandwidth()).attr('rx', 3)
+    .attr('fill', d => d.v ? col(d.v) : 'var(--surface-2)').attr('stroke', d => d.hit ? 'var(--ink)' : 'none').attr('stroke-width', 1.5);
+  g.selectAll('text.cell-t').data(cells.filter(d => d.v)).join('text').attr('class', 'cell-t').attr('x', d => x(d.c) + x.bandwidth() / 2).attr('y', d => y(d.r) + y.bandwidth() / 2).style('fill', d => d.v > mx * .55 ? '#fff' : 'var(--ink)').text(d => d.v);
+  bindTips(rects, d => `<b>${d.v} alerts</b><br>heuristic said ${d.r}<br>generator labelled ${d.c}`);
+  d3.select('#c-conf').append('div').attr('class', 'leg').html(`<span>Outlined cells: heuristic and ground truth agree. Gather-Scatter and Fan-Out are the two largest true classes; the heuristic reads most Gather-Scatter as a fan.</span>`);
+}
+function drawTable() {
+  const rows = E.me.map(r => `<tr><td class="mono">${r.metric}</td><td class="n">${fmtN(r.n)}</td><td class="n">${(+r.precision).toFixed(3)}</td><td class="n">${r.recall == null || isNaN(+r.recall) ? '' : (+r.recall).toFixed(3)}</td><td class="n">${r.positives ?? ''}</td></tr>`).join('');
+  $('#c-table').innerHTML = `<table><thead><tr><th>metric</th><th class="n">n</th><th class="n">precision</th><th class="n">recall</th><th class="n">positives</th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="note" style="margin-top:8px">Model ${E.model}. Validation: PR-AUC ${E.val.prauc}, best-F1 ${E.val.f1}, ROC-AUC ${E.val.rocauc}. Test window ${E.window[0]} to ${E.window[1]}.</p>`;
+}
+
+/* ---------- boot ---------- */
+renderAll();
+addEventListener('resize', () => { if (!$('#view-inv').hidden) fit(); });
+if (location.hash === '#evaluation') setView('eval');
+</script>

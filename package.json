@@ -1,0 +1,10 @@
+{
+  "name": "aml-compliance-platform",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SuperRepo root for the AML Investigator ontology (ontology-as-code)",
+  "scripts": {
+    "build:ontology": "foundry build ontology",
+    "bundle": "foundry bundle --project-version 0.1.0"
+  }
+}
